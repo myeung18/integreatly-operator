@@ -148,7 +148,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, in *v1alpha1.Installation, p
 			return phase, err
 		}
 
-		phase, err = r.reconcileExternalDatasources(ctx, serverClient)
+	/*	phase, err = r.reconcileExternalDatasources(ctx, serverClient)
 		if err != nil || phase != v1alpha1.PhaseCompleted {
 			return phase, err
 		}
@@ -156,7 +156,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, in *v1alpha1.Installation, p
 		phase, err = r.reconcileBlobStorage(ctx, serverClient)
 		if err != nil || phase != v1alpha1.PhaseCompleted {
 			return phase, err
-		}
+		}*/
 	}
 
 	phase, err = r.reconcileComponents(ctx, serverClient)
@@ -331,13 +331,13 @@ func (r *Reconciler) reconcileSMTPCredentials(ctx context.Context, serverClient 
 }
 
 func (r *Reconciler) reconcileComponents(ctx context.Context, serverClient pkgclient.Client) (v1alpha1.StatusPhase, error) {
-	fss, err := r.getBlobStorageFileStorageSpec(ctx, serverClient)
-	if err != nil {
+	//fss, err := r.getBlobStorageFileStorageSpec(ctx, serverClient)
+	/*if err != nil {
 		return v1alpha1.PhaseFailed, err
-	}
+	}*/
 
 	// create the 3scale api manager
-	resourceRequirements := true
+	resourceRequirements := false
 	apim := &threescalev1.APIManager{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      apiManagerName,
@@ -345,21 +345,21 @@ func (r *Reconciler) reconcileComponents(ctx context.Context, serverClient pkgcl
 		},
 		Spec: threescalev1.APIManagerSpec{
 			HighAvailability: &threescalev1.HighAvailabilitySpec{
-				Enabled: true,
+				Enabled: false,
 			},
 			APIManagerCommonSpec: threescalev1.APIManagerCommonSpec{
 				WildcardDomain:              r.installation.Spec.RoutingSubdomain,
 				ResourceRequirementsEnabled: &resourceRequirements,
 			},
-			System: &threescalev1.SystemSpec{
+			/*System: &threescalev1.SystemSpec{
 				DatabaseSpec: &threescalev1.SystemDatabaseSpec{
 					PostgreSQL: &threescalev1.SystemPostgreSQLSpec{},
 				},
 				FileStorageSpec: fss,
-			},
+			},*/
 		},
 	}
-	err = serverClient.Get(ctx, pkgclient.ObjectKey{Name: apim.Name, Namespace: r.Config.GetNamespace()}, apim)
+	err := serverClient.Get(ctx, pkgclient.ObjectKey{Name: apim.Name, Namespace: r.Config.GetNamespace()}, apim)
 	if err != nil && !k8serr.IsNotFound(err) {
 		return v1alpha1.PhaseFailed, err
 	}
