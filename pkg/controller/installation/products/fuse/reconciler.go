@@ -115,7 +115,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, inst *v1alpha1.Installation,
 		return v1alpha1.PhaseFailed, err
 	}
 
-	phase, err = r.ReconcileSubscription(ctx, namespace, marketplace.Target{Pkg: defaultSubscriptionName, Channel: marketplace.IntegreatlyChannel, Namespace: r.Config.GetNamespace(), ManifestPackage: manifestPackage}, r.Config.GetNamespace(), serverClient)
+	phase, err = r.ReconcileSubscription(ctx, namespace, marketplace.Target{Pkg: defaultSubscriptionName, Channel: marketplace.IntegreatlyChannel, Namespace: r.Config.GetNamespace(), ManifestPackage: manifestPackage}, r.Config.GetNamespace(), serverClient, string(r.Config.GetProductName()))
 	if err != nil || phase != v1alpha1.PhaseCompleted {
 		return phase, err
 	}
@@ -136,7 +136,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, inst *v1alpha1.Installation,
 	}
 
 	phase, err = r.reconcileTemplates(ctx, inst, serverClient)
-	logrus.Infof("Phase: %s reconcileTemplates", phase)
+	logrus.Infof("[%s] Phase: %s reconcileTemplates", r.Config.GetProductName(), phase)
 	if err != nil || phase != v1alpha1.PhaseCompleted {
 		logrus.Infof("Error: %s", err)
 		return phase, err
@@ -146,7 +146,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, inst *v1alpha1.Installation,
 	product.Version = r.Config.GetProductVersion()
 	product.OperatorVersion = r.Config.GetOperatorVersion()
 
-	logrus.Infof("%s has reconciled successfully", r.Config.GetProductName())
+	logrus.Infof("[%s] has reconciled successfully", r.Config.GetProductName())
 	return v1alpha1.PhaseCompleted, nil
 }
 
@@ -240,7 +240,7 @@ func (r *Reconciler) reconcileImageVersion(ctx context.Context, install *v1alpha
 
 // Ensures all users in rhmi-developers group have view Fuse permissions
 func (r *Reconciler) reconcileViewFusePerms(ctx context.Context, client pkgclient.Client) (v1alpha1.StatusPhase, error) {
-	r.logger.Infof("Reconciling view Fuse permissions for %s group on %s namespace", developersGroupName, r.Config.GetNamespace())
+	r.logger.Infof("[%s] Reconciling view Fuse permissions for %s group on %s namespace", r.Config.GetProductName(), developersGroupName, r.Config.GetNamespace())
 
 	openshiftUsers := &usersv1.UserList{}
 	err := client.List(ctx, openshiftUsers)
@@ -331,7 +331,7 @@ func (r *Reconciler) reconcileCustomResource(ctx context.Context, install *v1alp
 		r.ConfigManager.WriteConfig(r.Config)
 	}
 
-	r.logger.Info("Reconciling fuse custom resource")
+	r.logger.Infof("[%s] Reconciling fuse custom resource", r.Config.GetProductName())
 
 	intLimit := 0
 	cr := &syn.Syndesis{

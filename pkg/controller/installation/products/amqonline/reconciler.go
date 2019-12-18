@@ -99,7 +99,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, inst *v1alpha1.Installation,
 		return v1alpha1.PhaseFailed, err
 	}
 
-	phase, err = r.ReconcileSubscription(ctx, namespace, marketplace.Target{Pkg: defaultSubscriptionName, Namespace: ns, Channel: marketplace.IntegreatlyChannel, ManifestPackage: manifestPackage}, ns, serverClient)
+	phase, err = r.ReconcileSubscription(ctx, namespace, marketplace.Target{Pkg: defaultSubscriptionName, Namespace: ns, Channel: marketplace.IntegreatlyChannel, ManifestPackage: manifestPackage}, ns, serverClient, string(r.Config.GetProductName()))
 	if err != nil || phase != v1alpha1.PhaseCompleted {
 		return phase, err
 	}
@@ -135,7 +135,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, inst *v1alpha1.Installation,
 	}
 
 	phase, err = r.reconcileTemplates(ctx, inst, serverClient)
-	logrus.Infof("Phase: %s reconcileTemplates", phase)
+	logrus.Infof("[%s] Phase: %s reconcileTemplates", r.Config.GetProductName(), phase)
 	if err != nil || phase != v1alpha1.PhaseCompleted {
 		logrus.Infof("Error: %s", err)
 		return phase, err
@@ -186,13 +186,13 @@ func (r *Reconciler) reconcileTemplates(ctx context.Context, inst *v1alpha1.Inst
 		if err != nil {
 			return v1alpha1.PhaseFailed, errors.Wrap(err, fmt.Sprintf("failed to create/update monitoring template %s", template))
 		}
-		logrus.Infof("Reconciling the monitoring template %s was successful", template)
+		logrus.Infof("[%s] Reconciling the monitoring template %s was successful", r.Config.GetProductName(), template)
 	}
 	return v1alpha1.PhaseCompleted, nil
 }
 
 func (r *Reconciler) reconcileAuthServices(ctx context.Context, serverClient pkgclient.Client, authSvcs []*v1beta1.AuthenticationService) (v1alpha1.StatusPhase, error) {
-	r.logger.Info("reconciling default auth services")
+	r.logger.Infof("[%s] reconciling default auth services", r.Config.GetProductName())
 
 	for _, as := range authSvcs {
 		as.Namespace = r.Config.GetNamespace()
@@ -205,7 +205,7 @@ func (r *Reconciler) reconcileAuthServices(ctx context.Context, serverClient pkg
 }
 
 func (r *Reconciler) reconcileBrokerConfigs(ctx context.Context, serverClient pkgclient.Client, brokeredCfgs []*v1beta12.BrokeredInfraConfig, stdCfgs []*v1beta12.StandardInfraConfig) (v1alpha1.StatusPhase, error) {
-	r.logger.Info("reconciling default infra configs")
+	r.logger.Infof("[%s] reconciling default infra configs", r.Config.GetProductName())
 
 	for _, bic := range brokeredCfgs {
 		bic.Namespace = r.Config.GetNamespace()
@@ -225,7 +225,7 @@ func (r *Reconciler) reconcileBrokerConfigs(ctx context.Context, serverClient pk
 }
 
 func (r *Reconciler) reconcileAddressPlans(ctx context.Context, serverClient pkgclient.Client, addrPlans []*v1beta2.AddressPlan) (v1alpha1.StatusPhase, error) {
-	r.logger.Info("reconciling default address plans")
+	r.logger.Infof("[%s] reconciling default address plans", r.Config.GetProductName())
 
 	for _, ap := range addrPlans {
 		err := serverClient.Create(ctx, ap)
@@ -237,7 +237,7 @@ func (r *Reconciler) reconcileAddressPlans(ctx context.Context, serverClient pkg
 }
 
 func (r *Reconciler) reconcileAddressSpacePlans(ctx context.Context, serverClient pkgclient.Client, addrSpacePlans []*v1beta2.AddressSpacePlan) (v1alpha1.StatusPhase, error) {
-	r.logger.Info("reconciling default address space plans")
+	r.logger.Infof("[%s] reconciling default address space plans", r.Config.GetProductName())
 
 	for _, asp := range addrSpacePlans {
 		err := serverClient.Create(ctx, asp)
@@ -249,7 +249,7 @@ func (r *Reconciler) reconcileAddressSpacePlans(ctx context.Context, serverClien
 }
 
 func (r *Reconciler) reconcileConfig(ctx context.Context, serverClient pkgclient.Client) (v1alpha1.StatusPhase, error) {
-	r.logger.Infof("reconciling config")
+	r.logger.Infof("[%s] reconciling config", r.Config.GetProductName())
 
 	consoleSvc := &v1beta1.ConsoleService{
 		ObjectMeta: metav1.ObjectMeta{

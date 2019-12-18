@@ -148,7 +148,7 @@ func TestNewReconciler_ReconcileSubscription(t *testing.T) {
 				tc.FakeMPM,
 			)
 
-			status, err := reconciler.ReconcileSubscription(context.TODO(), tc.Installation, marketplace.Target{Namespace: "test-ns", Channel: "integreatly", Pkg: tc.SubscriptionName}, "test-ns", tc.client)
+			status, err := reconciler.ReconcileSubscription(context.TODO(), tc.Installation, marketplace.Target{Namespace: "test-ns", Channel: "integreatly", Pkg: tc.SubscriptionName}, "test-ns", tc.client, "testProductName")
 			if tc.ExpectErr && err == nil {
 				t.Fatal("expected an error but got none")
 			}

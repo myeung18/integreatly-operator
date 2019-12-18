@@ -99,7 +99,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, inst *v1alpha1.Installation,
 		return v1alpha1.PhaseFailed, err
 	}
 
-	phase, err = r.ReconcileSubscription(ctx, namespace, marketplace.Target{Pkg: defaultSubscriptionName, Channel: marketplace.IntegreatlyChannel, Namespace: r.Config.GetNamespace(), ManifestPackage: manifestPackage}, r.Config.GetNamespace(), serverClient)
+	phase, err = r.ReconcileSubscription(ctx, namespace, marketplace.Target{Pkg: defaultSubscriptionName, Channel: marketplace.IntegreatlyChannel, Namespace: r.Config.GetNamespace(), ManifestPackage: manifestPackage}, r.Config.GetNamespace(), serverClient, string(r.Config.GetProductName()))
 	if err != nil || phase != v1alpha1.PhaseCompleted {
 		return phase, err
 	}
@@ -125,7 +125,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, inst *v1alpha1.Installation,
 	}
 
 	phase, err = r.reconcileTemplates(ctx, inst, serverClient)
-	logrus.Infof("Phase: %s reconcileTemplates", phase)
+	logrus.Infof("[%s] Phase: %s reconcileTemplates", r.Config.GetProductName(), phase)
 	if err != nil || phase != v1alpha1.PhaseCompleted {
 		logrus.Infof("Error: %s", err)
 		return phase, err
@@ -135,7 +135,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, inst *v1alpha1.Installation,
 	product.Version = r.Config.GetProductVersion()
 	product.OperatorVersion = r.Config.GetOperatorVersion()
 
-	r.logger.Infof("%s has reconciled successfully", r.Config.GetProductName())
+	r.logger.Infof("[%s] has reconciled successfully", r.Config.GetProductName())
 	return v1alpha1.PhaseCompleted, nil
 }
 
@@ -147,7 +147,7 @@ func (r *Reconciler) reconcileTemplates(ctx context.Context, inst *v1alpha1.Inst
 		if err != nil {
 			return v1alpha1.PhaseFailed, errors.Wrap(err, fmt.Sprintf("failed to create/update monitoring template %s", template))
 		}
-		logrus.Infof("Reconciling the monitoring template %s was successful", template)
+		logrus.Infof("[%s] Reconciling the monitoring template %s was successful", r.Config.GetProductName(), template)
 	}
 	return v1alpha1.PhaseCompleted, nil
 }
@@ -261,7 +261,7 @@ func (r *Reconciler) reconcileCheCluster(ctx context.Context, inst *v1alpha1.Ins
 		return v1alpha1.PhaseFailed, errors.Wrap(err, "keycloak config is not valid")
 	}
 
-	r.logger.Infof("creating required custom resources in namespace: %s", r.Config.GetNamespace())
+	r.logger.Infof("[%s] creating required custom resources in namespace: %s", r.Config.GetProductName(), r.Config.GetNamespace())
 
 	kcRealm := &keycloak.KeycloakRealm{}
 	key := pkgclient.ObjectKey{Name: kcConfig.GetRealm(), Namespace: kcConfig.GetNamespace()}
@@ -316,7 +316,7 @@ func (r *Reconciler) reconcileCheCluster(ctx context.Context, inst *v1alpha1.Ins
 }
 
 func (r *Reconciler) handleProgressPhase(ctx context.Context, serverClient pkgclient.Client) (v1alpha1.StatusPhase, error) {
-	r.logger.Info("checking that checluster custom resource is marked as available")
+	r.logger.Info("[%s] checking that checluster custom resource is marked as available", r.Config.GetProductName())
 
 	// retrive the checluster so we can use its URL for redirect and web origins in the keycloak client
 	cheCluster := &chev1.CheCluster{
@@ -337,7 +337,7 @@ func (r *Reconciler) handleProgressPhase(ctx context.Context, serverClient pkgcl
 }
 
 func (r *Reconciler) reconcileKeycloakClient(ctx context.Context, inst *v1alpha1.Installation, serverClient pkgclient.Client) (v1alpha1.StatusPhase, error) {
-	r.logger.Infof("checking keycloak client exists for che")
+	r.logger.Infof("[%s] checking keycloak client exists for che", r.Config.GetProductName())
 	kcConfig, err := r.ConfigManager.ReadRHSSO()
 	if err != nil {
 		return v1alpha1.PhaseFailed, errors.Wrap(err, "could not retrieve keycloak config")
@@ -388,7 +388,7 @@ func (r *Reconciler) reconcileKeycloakClient(ctx context.Context, inst *v1alpha1
 		return v1alpha1.PhaseFailed, errors.Wrap(err, "could not create/update codeready keycloak client")
 	}
 
-	r.logger.Infof("The operation result for keycloakclient %s was %s", kcClient.Name, or)
+	r.logger.Infof("[%s] The operation result for keycloakclient %s was %s", r.Config.GetProductName(), kcClient.Name, or)
 	return v1alpha1.PhaseCompleted, nil
 }
 

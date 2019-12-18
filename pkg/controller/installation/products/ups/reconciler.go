@@ -72,7 +72,7 @@ func (r *Reconciler) GetPreflightObject(ns string) runtime.Object {
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, inst *v1alpha1.Installation, product *v1alpha1.InstallationProductStatus, serverClient pkgclient.Client) (v1alpha1.StatusPhase, error) {
-	logrus.Infof("Reconciling %s", defaultUpsName)
+	logrus.Infof("[%s] Reconciling %s", r.Config.GetProductName(), defaultUpsName)
 
 	phase, err := r.ReconcileFinalizer(ctx, serverClient, inst, string(r.Config.GetProductName()), func() (v1alpha1.StatusPhase, error) {
 		phase, err := resources.RemoveNamespace(ctx, inst, serverClient, r.Config.GetNamespace())
@@ -97,7 +97,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, inst *v1alpha1.Installation,
 		return v1alpha1.PhaseFailed, err
 	}
 
-	phase, err = r.ReconcileSubscription(ctx, namespace, marketplace.Target{Pkg: defaultSubscriptionName, Namespace: ns, Channel: marketplace.IntegreatlyChannel, ManifestPackage: manifestPackage}, ns, serverClient)
+	phase, err = r.ReconcileSubscription(ctx, namespace, marketplace.Target{Pkg: defaultSubscriptionName, Namespace: ns, Channel: marketplace.IntegreatlyChannel, ManifestPackage: manifestPackage}, ns, serverClient, string(r.Config.GetProductName()))
 	if err != nil || phase != v1alpha1.PhaseCompleted {
 		return phase, err
 	}
@@ -121,14 +121,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, inst *v1alpha1.Installation,
 	product.Version = r.Config.GetProductVersion()
 	product.OperatorVersion = r.Config.GetOperatorVersion()
 
-	logrus.Infof("%s is successfully reconciled", defaultUpsName)
+	logrus.Infof("[%s] is successfully reconciled", defaultUpsName)
 
 	return v1alpha1.PhaseCompleted, nil
 }
 
 func (r *Reconciler) reconcileCustomResource(ctx context.Context, serverClient pkgclient.Client) (v1alpha1.StatusPhase, error) {
 	// Reconcile Ups custom resource
-	logrus.Info("Reconciling unified push server cr")
+	logrus.Infof("[%s] Reconciling unified push server cr", r.Config.GetProductName())
 	cr := &upsv1alpha1.UnifiedPushServer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      defaultUpsName,
@@ -155,14 +155,14 @@ func (r *Reconciler) reconcileCustomResource(ctx context.Context, serverClient p
 		return v1alpha1.PhaseInProgress, nil
 	}
 
-	logrus.Info("Successfully reconciled unified push server custom resource")
+	logrus.Infof("[%s] Successfully reconciled unified push server custom resource", r.Config.GetProductName())
 
 	return v1alpha1.PhaseCompleted, nil
 }
 
 func (r *Reconciler) reconcileHost(ctx context.Context, serverClient pkgclient.Client) (v1alpha1.StatusPhase, error) {
 	// Setting host on config to exposed route
-	logrus.Info("Setting unified push server config host")
+	logrus.Infof("[%s] Setting unified push server config host", r.Config.GetProductName())
 	upsRoute := &routev1.Route{}
 	err := serverClient.Get(ctx, pkgclient.ObjectKey{Name: defaultRoutename, Namespace: r.Config.GetNamespace()}, upsRoute)
 	if err != nil {
@@ -175,7 +175,7 @@ func (r *Reconciler) reconcileHost(ctx context.Context, serverClient pkgclient.C
 		return v1alpha1.PhaseFailed, pkgerr.Wrap(err, "could not update unified push server config")
 	}
 
-	logrus.Info("Successfully set unified push server host")
+	logrus.Infof("[%s] Successfully set unified push server host", r.Config.GetProductName())
 
 	return v1alpha1.PhaseCompleted, nil
 }

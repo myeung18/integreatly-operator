@@ -147,7 +147,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, inst *v1alpha1.Installation,
 		return v1alpha1.PhaseFailed, err
 	}
 
-	phase, err = r.ReconcileSubscription(ctx, namespace, marketplace.Target{Pkg: defaultSubscriptionName, Channel: marketplace.IntegreatlyChannel, Namespace: r.Config.GetNamespace(), ManifestPackage: manifestPackage}, r.Config.GetNamespace(), serverClient)
+	phase, err = r.ReconcileSubscription(ctx, namespace, marketplace.Target{Pkg: defaultSubscriptionName, Channel: marketplace.IntegreatlyChannel, Namespace: r.Config.GetNamespace(), ManifestPackage: manifestPackage}, r.Config.GetNamespace(), serverClient, string(r.Config.GetProductName()))
 	if err != nil || phase != v1alpha1.PhaseCompleted {
 		return phase, err
 	}
@@ -163,7 +163,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, inst *v1alpha1.Installation,
 	}
 
 	phase, err = r.reconcileTemplates(ctx, inst, serverClient)
-	logrus.Infof("Phase: %s reconcileTemplates", phase)
+	logrus.Infof("[%s] Phase: %s reconcileTemplates", r.Config.GetProductName(), phase)
 	if err != nil || phase != v1alpha1.PhaseCompleted {
 		logrus.Infof("Error: %s", err)
 		return phase, err
@@ -183,7 +183,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, inst *v1alpha1.Installation,
 	product.Version = r.Config.GetProductVersion()
 	product.OperatorVersion = r.Config.GetOperatorVersion()
 
-	r.logger.Infof("%s has reconciled successfully", r.Config.GetProductName())
+	r.logger.Infof("[%s] has reconciled successfully", r.Config.GetProductName())
 	return v1alpha1.PhaseCompleted, nil
 }
 
@@ -310,7 +310,7 @@ func (r *Reconciler) reconcileTemplates(ctx context.Context, inst *v1alpha1.Inst
 		if err != nil {
 			return v1alpha1.PhaseFailed, errors.Wrap(err, fmt.Sprintf("failed to create/update monitoring template %s", template))
 		}
-		logrus.Infof("Reconciling the monitoring template %s was successful", template)
+		logrus.Infof("[%s] Reconciling the monitoring template %s was successful", r.Config.GetProductName(), template)
 	}
 
 	return v1alpha1.PhaseCompleted, nil
@@ -365,7 +365,7 @@ func (r *Reconciler) createKeycloakRoute(ctx context.Context, inst *v1alpha1.Ins
 	if err != nil {
 		return v1alpha1.PhaseFailed, errors.Wrap(err, "error creating keycloak http service")
 	}
-	r.logger.Info(fmt.Sprintf("operation result of creating %v service was %v", httpService.Name, or))
+	r.logger.Info(fmt.Sprintf("[%s] operation result of creating %v service was %v", r.Config.GetProductName(), httpService.Name, or))
 
 	or, err = controllerutil.CreateOrUpdate(ctx, serverClient, edgeRoute, func() error {
 		host := edgeRoute.Spec.Host
@@ -389,7 +389,7 @@ func (r *Reconciler) createKeycloakRoute(ctx context.Context, inst *v1alpha1.Ins
 	if err != nil {
 		return v1alpha1.PhaseFailed, errors.Wrap(err, "error creating keycloak http service")
 	}
-	r.logger.Info(fmt.Sprintf("operation result of creating %v service was %v", edgeRoute.Name, or))
+	r.logger.Info(fmt.Sprintf("[%s] operation result of creating %v service was %v", r.Config.GetProductName(), edgeRoute.Name, or))
 
 	if edgeRoute.Spec.Host == "" {
 		return v1alpha1.PhaseInProgress, nil
@@ -403,7 +403,7 @@ func (r *Reconciler) createKeycloakRoute(ctx context.Context, inst *v1alpha1.Ins
 }
 
 func (r *Reconciler) reconcileComponents(ctx context.Context, inst *v1alpha1.Installation, serverClient pkgclient.Client) (v1alpha1.StatusPhase, error) {
-	r.logger.Info("Reconciling Keycloak components")
+	r.logger.Infof("[%s] Reconciling Keycloak components", r.Config.GetProductName())
 	kc := &keycloak.Keycloak{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      keycloakName,
@@ -426,7 +426,7 @@ func (r *Reconciler) reconcileComponents(ctx context.Context, inst *v1alpha1.Ins
 	if err != nil {
 		return v1alpha1.PhaseFailed, errors.Wrap(err, "failed to create/update keycloak custom resource")
 	}
-	r.logger.Infof("The operation result for keycloak %s was %s", kc.Name, or)
+	r.logger.Infof("[%s] The operation result for keycloak %s was %s", r.Config.GetProductName(), kc.Name, or)
 
 	kcr := &keycloak.KeycloakRealm{
 		ObjectMeta: metav1.ObjectMeta{
@@ -478,14 +478,14 @@ func (r *Reconciler) reconcileComponents(ctx context.Context, inst *v1alpha1.Ins
 	if err != nil {
 		return v1alpha1.PhaseFailed, errors.Wrap(err, "failed to create/update keycloak realm")
 	}
-	r.logger.Infof("The operation result for keycloakrealm %s was %s", kcr.Name, or)
+	r.logger.Infof("[%s] The operation result for keycloakrealm %s was %s", r.Config.GetProductName(), kcr.Name, or)
 
 	// Create the customer admin
 	or, err = r.createOrUpdateKeycloakUser(CustomerAdminUser, inst, ctx, serverClient)
 	if err != nil {
 		return v1alpha1.PhaseFailed, errors.Wrap(err, "failed to create/update the customer admin user")
 	} else {
-		r.logger.Infof("The operation result for keycloakuser %s was %s", CustomerAdminUser.UserName, or)
+		r.logger.Infof("[%s] The operation result for keycloakuser %s was %s", r.Config.GetProductName(), CustomerAdminUser.UserName, or)
 	}
 
 	// Get all currently existing keycloak users
@@ -506,7 +506,7 @@ func (r *Reconciler) reconcileComponents(ctx context.Context, inst *v1alpha1.Ins
 		if err != nil {
 			return v1alpha1.PhaseFailed, errors.Wrap(err, "failed to create/update the customer admin user")
 		} else {
-			r.logger.Infof("The operation result for keycloakuser %s was %s", user.UserName, or)
+			r.logger.Infof("[%s] The operation result for keycloakuser %s was %s", r.Config.GetProductName(), user.UserName, or)
 		}
 	}
 	return v1alpha1.PhaseCompleted, nil
@@ -525,7 +525,7 @@ func (r *Reconciler) handleProgressPhase(ctx context.Context, inst *v1alpha1.Ins
 	r.Config.SetOperatorVersion(string(v1alpha1.OperatorVersionRHSSO))
 	r.ConfigManager.WriteConfig(r.Config)
 
-	r.logger.Info("checking ready status for rhsso")
+	r.logger.Infof("[%s] checking ready status for rhsso", r.Config.GetProductName())
 	kcr := &keycloak.KeycloakRealm{}
 
 	err = serverClient.Get(ctx, pkgclient.ObjectKey{Name: keycloakRealmName, Namespace: r.Config.GetNamespace()}, kcr)
@@ -539,11 +539,11 @@ func (r *Reconciler) handleProgressPhase(ctx context.Context, inst *v1alpha1.Ins
 			return v1alpha1.PhaseFailed, errors.Wrap(err, "failed to write rhsso config")
 		}
 
-		logrus.Infof("Keycloak has successfully processed the keycloakRealm")
+		logrus.Infof("[%s] Keycloak has successfully processed the keycloakRealm", r.Config.GetProductName())
 		return v1alpha1.PhaseCompleted, nil
 	}
 
-	r.logger.Infof("KeycloakRealm status phase is: %s", kcr.Status.Phase)
+	r.logger.Infof("[%s] KeycloakRealm status phase is: %s", r.Config.GetProductName(), kcr.Status.Phase)
 	return v1alpha1.PhaseInProgress, nil
 }
 
@@ -603,7 +603,7 @@ func (r *Reconciler) setupOpenshiftIDP(ctx context.Context, inst *v1alpha1.Insta
 	}
 
 	if !containsIdentityProvider(kcr.Spec.Realm.IdentityProviders, idpAlias) {
-		logrus.Infof("Adding keycloak realm client")
+		logrus.Infof("[%s] Adding keycloak realm client", r.Config.GetProductName())
 		if kcr.Spec.Realm.IdentityProviders == nil {
 			kcr.Spec.Realm.IdentityProviders = []*keycloak.KeycloakIdentityProvider{}
 		}
@@ -659,7 +659,7 @@ func (r *Reconciler) setupGithubIDP(ctx context.Context, kcr *keycloak.KeycloakR
 	}
 
 	if !containsIdentityProvider(kcr.Spec.Realm.IdentityProviders, githubIdpAlias) {
-		logrus.Infof("Adding github identity provider to the keycloak realm")
+		logrus.Infof("[%s] Adding github identity provider to the keycloak realm", r.Config.GetProductName())
 		if kcr.Spec.Realm.IdentityProviders == nil {
 			kcr.Spec.Realm.IdentityProviders = []*keycloak.KeycloakIdentityProvider{}
 		}

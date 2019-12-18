@@ -20,7 +20,7 @@ const (
 
 // Generates ConfigMap equivalent from a manifest package
 func GenerateRegistryConfigMapFromManifest(manifestPackageName string) (map[string]string, error) {
-	manifestDir := fmt.Sprintf("%s/%s", GetManifestDirEnvVar(), manifestPackageName)
+	manifestDir := fmt.Sprintf("%s/%s", GetManifestDirEnvVar(manifestPackageName), manifestPackageName)
 
 	configMapData := make(map[string]string)
 
@@ -132,12 +132,12 @@ func GetCurrentCSVFromManifest(packageYaml string) (string, error) {
 }
 
 // Get the manifest directory for when running locally vs when in container image
-func GetManifestDirEnvVar() string {
+func GetManifestDirEnvVar(manifestPackageName string) string {
 	if envVar := os.Getenv(manifestEnvVarKey); envVar != "" {
-		logrus.Infof("Using env var manifest dir: %s", envVar)
+		logrus.Infof("[%s] Using env var manifest dir: %s",manifestPackageName, envVar)
 		return envVar
 	}
 
-	logrus.Info("Using default manifest package dir")
+	logrus.Infof("[%s] Using default manifest package dir", manifestPackageName)
 	return defaultManifestDir
 }

@@ -47,7 +47,7 @@ func (r *Reconciler) GetPreflightObject(ns string) runtime.Object {
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, in *v1alpha1.Installation, serverClient pkgclient.Client) (v1alpha1.StatusPhase, error) {
-	logrus.Infof("Reconciling bootstrap stage")
+	logrus.Infof("[%s] Reconciling bootstrap stage", r.Config.GetProductName())
 
 	phase, err := r.reconcileOauthSecrets(ctx, serverClient)
 	if err != nil || phase != v1alpha1.PhaseCompleted {
@@ -59,7 +59,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, in *v1alpha1.Installation, s
 		return phase, err
 	}
 
-	logrus.Infof("Bootstrap stage reconciled successfully")
+	logrus.Infof("[%s] Bootstrap stage reconciled successfully", r.Config.GetProductName())
 	return v1alpha1.PhaseCompleted, nil
 }
 
@@ -110,7 +110,7 @@ func (r *Reconciler) reconcileOauthSecrets(ctx context.Context, serverClient pkg
 	if err != nil {
 		return v1alpha1.PhaseFailed, errors.Wrap(err, "Error reconciling OAuth clients secrets")
 	}
-	logrus.Info("Bootstrap OAuth client secrets successfully reconciled")
+	logrus.Infof("[%s] Bootstrap OAuth client secrets successfully reconciled", r.Config.GetProductName())
 
 	return v1alpha1.PhaseCompleted, nil
 }

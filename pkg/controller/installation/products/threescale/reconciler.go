@@ -137,7 +137,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, in *v1alpha1.Installation, p
 		return phase, err
 	}
 
-	phase, err = r.ReconcileSubscription(ctx, namespace, marketplace.Target{Pkg: packageName, Channel: marketplace.IntegreatlyChannel, Namespace: r.Config.GetNamespace(), ManifestPackage: manifestPackage}, r.Config.GetNamespace(), serverClient)
+	phase, err = r.ReconcileSubscription(ctx, namespace, marketplace.Target{Pkg: packageName, Channel: marketplace.IntegreatlyChannel, Namespace: r.Config.GetNamespace(), ManifestPackage: manifestPackage}, r.Config.GetNamespace(), serverClient, string(r.Config.GetProductName()))
 	if err != nil || phase != v1alpha1.PhaseCompleted {
 		return phase, err
 	}
@@ -206,7 +206,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, in *v1alpha1.Installation, p
 	}
 
 	phase, err = r.reconcileTemplates(ctx, in, serverClient)
-	logrus.Infof("Phase: %s reconcileTemplates", phase)
+	logrus.Infof("[%s] Phase: %s reconcileTemplates", r.Config.GetProductName(), phase)
 	if err != nil || phase != v1alpha1.PhaseCompleted {
 		logrus.Infof("Error: %s", err)
 		return phase, err
@@ -216,7 +216,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, in *v1alpha1.Installation, p
 	product.Version = r.Config.GetProductVersion()
 	product.OperatorVersion = r.Config.GetOperatorVersion()
 
-	logrus.Infof("%s installation is reconciled successfully", packageName)
+	logrus.Infof("[%s] installation is reconciled successfully", packageName)
 	return v1alpha1.PhaseCompleted, nil
 }
 
@@ -278,7 +278,7 @@ func (r *Reconciler) getOauthClientSecret(ctx context.Context, serverClient pkgc
 }
 
 func (r *Reconciler) reconcileSMTPCredentials(ctx context.Context, serverClient pkgclient.Client) (v1alpha1.StatusPhase, error) {
-	logrus.Info("Reconciling smtp")
+	logrus.Infof("[%s] Reconciling smtp", r.Config.GetProductName())
 	ns := r.installation.Namespace
 
 	// setup smtp credential set cr for the cloud resource operator
@@ -365,7 +365,7 @@ func (r *Reconciler) reconcileComponents(ctx context.Context, serverClient pkgcl
 	}
 
 	if err != nil {
-		logrus.Infof("Creating API Manager")
+		logrus.Infof("[%s] Creating API Manager", r.Config.GetProductName())
 		err := serverClient.Create(ctx, apim)
 		if err != nil {
 			return v1alpha1.PhaseFailed, err
@@ -403,7 +403,7 @@ func (r *Reconciler) reconcileComponents(ctx context.Context, serverClient pkgcl
 }
 
 func (r *Reconciler) reconcileBlobStorage(ctx context.Context, serverClient pkgclient.Client) (v1alpha1.StatusPhase, error) {
-	logrus.Info("Reconciling blob storage")
+	logrus.Infof("[%s] Reconciling blob storage", r.Config.GetProductName())
 	ns := r.installation.Namespace
 
 	// setup blob storage cr for the cloud resource operator
@@ -471,12 +471,12 @@ func (r *Reconciler) getBlobStorageFileStorageSpec(ctx context.Context, serverCl
 // reconcileExternalDatasources provisions 2 redis caches and a postgres instance
 // which are used when 3scale HighAvailability mode is enabled
 func (r *Reconciler) reconcileExternalDatasources(ctx context.Context, serverClient pkgclient.Client) (v1alpha1.StatusPhase, error) {
-	logrus.Info("Reconciling external datastores")
+	logrus.Infof("[%s] Reconciling external datastores", r.Config.GetProductName())
 	ns := r.installation.Namespace
 
 	// setup backend redis custom resource
 	// this will be used by the cloud resources operator to provision a redis instance
-	logrus.Info("Creating backend redis instance")
+	logrus.Infof("[%s] Creating backend redis instance", r.Config.GetProductName())
 	backendRedisName := fmt.Sprintf("threescale-backend-redis-%s", r.installation.Name)
 	backendRedis, err := croUtil.ReconcileRedis(ctx, serverClient, r.installation.Spec.Type, tier, backendRedisName, ns, backendRedisName, ns, func(cr metav1.Object) error {
 		ownerutil.EnsureOwner(cr, r.installation)
@@ -488,7 +488,7 @@ func (r *Reconciler) reconcileExternalDatasources(ctx context.Context, serverCli
 
 	// setup system redis custom resource
 	// this will be used by the cloud resources operator to provision a redis instance
-	logrus.Info("Creating system redis instance")
+	logrus.Infof("[%s] Creating system redis instance", r.Config.GetProductName())
 	systemRedisName := fmt.Sprintf("threescale-redis-%s", r.installation.Name)
 	systemRedis, err := croUtil.ReconcileRedis(ctx, serverClient, r.installation.Spec.Type, tier, systemRedisName, ns, systemRedisName, ns, func(cr metav1.Object) error {
 		ownerutil.EnsureOwner(cr, r.installation)
@@ -500,7 +500,7 @@ func (r *Reconciler) reconcileExternalDatasources(ctx context.Context, serverCli
 
 	// setup postgres cr for the cloud resource operator
 	// this will be used by the cloud resources operator to provision a postgres instance
-	logrus.Info("Creating postgres instance")
+	logrus.Infof("[%s] Creating postgres instance", r.Config.GetProductName())
 	postgresName := fmt.Sprintf("threescale-postgres-%s", r.installation.Name)
 	postgres, err := croUtil.ReconcilePostgres(ctx, serverClient, r.installation.Spec.Type, tier, postgresName, ns, postgresName, ns, func(cr metav1.Object) error {
 		ownerutil.EnsureOwner(cr, r.installation)
@@ -642,7 +642,7 @@ func (r *Reconciler) reconcileRHSSOIntegration(ctx context.Context, inst *v1alph
 		return v1alpha1.PhaseFailed, errors.Wrap(err, "could not create/update 3scale keycloak client")
 	}
 
-	r.logger.Infof("The operation result for keycloakclient %s was %s", kcClient.Name, or)
+	r.logger.Infof("[%s] The operation result for keycloakclient %s was %s", r.Config.GetProductName(), kcClient.Name, or)
 
 	r.Config.SetHost(fmt.Sprintf("https://3scale-admin.%s", r.installation.Spec.RoutingSubdomain))
 	err = r.ConfigManager.WriteConfig(r.Config)
@@ -690,7 +690,7 @@ func (r *Reconciler) reconcileUpdatingDefaultAdminDetails(ctx context.Context, s
 	rhssoNamespace := rhssoConfig.GetNamespace()
 	rhssoRealm := rhssoConfig.GetRealm()
 	if rhssoNamespace == "" || rhssoRealm == "" {
-		logrus.Info("Cannot update admin details without SSO namespace and SSO realm")
+		logrus.Infof("[%s] Cannot update admin details without SSO namespace and SSO realm", r.Config.GetProductName())
 		return v1alpha1.PhaseInProgress, nil
 	}
 

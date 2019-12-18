@@ -147,8 +147,8 @@ func (r *Reconciler) ReconcilePullSecret(ctx context.Context, namespace, secretN
 	return v1alpha1.PhaseCompleted, nil
 }
 
-func (r *Reconciler) ReconcileSubscription(ctx context.Context, owner ownerutil.Owner, t marketplace.Target, targetNS string, client pkgclient.Client) (v1alpha1.StatusPhase, error) {
-	logrus.Infof("reconciling subscription %s from channel %s in namespace: %s", t.Pkg, "integreatly", t.Namespace)
+func (r *Reconciler) ReconcileSubscription(ctx context.Context, owner ownerutil.Owner, t marketplace.Target, targetNS string, client pkgclient.Client, productName string) (v1alpha1.StatusPhase, error) {
+	logrus.Infof("[%s] reconciling subscription %s from channel %s in namespace: %s", productName, t.Pkg, "integreatly", t.Namespace)
 	err := r.mpm.InstallOperator(ctx, client, owner, t, []string{targetNS}, operatorsv1alpha1.ApprovalManual)
 
 	if err != nil && !k8serr.IsAlreadyExists(err) {
@@ -176,11 +176,11 @@ func (r *Reconciler) ReconcileSubscription(ctx context.Context, owner ownerutil.
 
 		//if it's approved but not complete, then it's in progress
 		if ip.Status.Phase != operatorsv1alpha1.InstallPlanPhaseComplete && ip.Spec.Approved {
-			logrus.Infof("%s install plan is not complete yet ", t.Pkg)
+			logrus.Infof("[%s] %s install plan is not complete yet ", productName, t.Pkg)
 			return v1alpha1.PhaseInProgress, nil
 			//if it's not approved by now, then it will not be approved by this version of the integreatly-operator
 		} else if !ip.Spec.Approved {
-			logrus.Infof("%s has an upgrade installplan above the maximum allowed version", t.Pkg)
+			logrus.Infof("[%s] %s has an upgrade installplan above the maximum allowed version", productName, t.Pkg)
 		}
 	}
 

@@ -73,22 +73,22 @@ func NewReconciler(configManager config.ConfigReadWriter, instance *v1alpha1.Ins
 
 func (r *Reconciler) Reconcile(ctx context.Context, inst *v1alpha1.Installation, product *v1alpha1.InstallationProductStatus, serverClient pkgclient.Client) (v1alpha1.StatusPhase, error) {
 	phase, err := r.ReconcileFinalizer(ctx, serverClient, inst, string(r.Config.GetProductName()), func() (v1alpha1.StatusPhase, error) {
-		logrus.Infof("Phase: Monitoring ReconcileFinalizer")
-		logrus.Infof("Phase: Monitoring ReconcileFinalizer list blackboxtargets")
+		logrus.Infof("[%s] Phase: Monitoring ReconcileFinalizer", r.Config.GetProductName())
+		logrus.Infof("[%s] Phase: Monitoring ReconcileFinalizer list blackboxtargets", r.Config.GetProductName())
 		blackboxtargets := &monitoring_v1alpha1.BlackboxTargetList{}
 		blackboxtargetsListOpts := []pkgclient.ListOption{
 			pkgclient.MatchingLabels(map[string]string{r.Config.GetLabelSelectorKey(): r.Config.GetLabelSelector()}),
 		}
 		err := serverClient.List(ctx, blackboxtargets, blackboxtargetsListOpts...)
 		if err != nil {
-			logrus.Infof("Phase: Monitoring ReconcileFinalizer blackboxtargets error")
+			logrus.Infof("[%s] Phase: Monitoring ReconcileFinalizer blackboxtargets error", r.Config.GetProductName())
 			return v1alpha1.PhaseFailed, err
 		}
 		if len(blackboxtargets.Items) > 0 {
-			logrus.Infof("Phase: Monitoring ReconcileFinalizer blackboxtargets list > 0")
+			logrus.Infof("[%s] Phase: Monitoring ReconcileFinalizer blackboxtargets list > 0", r.Config.GetProductName())
 			// do something to delete these dashboards
 			for _, bbt := range blackboxtargets.Items {
-				logrus.Infof("Phase: Monitoring ReconcileFinalizer try delete blackboxtarget %s", bbt.Name)
+				logrus.Infof("[%s] Phase: Monitoring ReconcileFinalizer try delete blackboxtarget %s",r.Config.GetProductName(), bbt.Name)
 				b := &monitoring_v1alpha1.BlackboxTarget{}
 				err = serverClient.Get(ctx, pkgclient.ObjectKey{Name: bbt.Name, Namespace: r.Config.GetNamespace()}, b)
 				if err != nil {
@@ -106,12 +106,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, inst *v1alpha1.Installation,
 		m := &monitoring_v1alpha1.ApplicationMonitoring{}
 		err = serverClient.Get(ctx, pkgclient.ObjectKey{Name: defaultMonitoringName, Namespace: r.Config.GetNamespace()}, m)
 		if err != nil && !kerrors.IsNotFound(err) {
-			logrus.Infof("Phase: Monitoring ReconcileFinalizer error fetch ApplicationMonitoring CR")
+			logrus.Infof("[%s] Phase: Monitoring ReconcileFinalizer error fetch ApplicationMonitoring CR", r.Config.GetProductName())
 			return v1alpha1.PhaseFailed, err
 		}
 		if !kerrors.IsNotFound(err) {
 			if m.DeletionTimestamp == nil {
-				logrus.Infof("Phase: Monitoring ReconcileFinalizer delete ApplicationMonitoring CR")
+				logrus.Infof("[%s] Phase: Monitoring ReconcileFinalizer delete ApplicationMonitoring CR", r.Config.GetProductName())
 				err = serverClient.Delete(ctx, m)
 				if err != nil {
 					return v1alpha1.PhaseFailed, err
@@ -120,7 +120,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, inst *v1alpha1.Installation,
 			return v1alpha1.PhaseInProgress, nil
 		}
 
-		logrus.Infof("Phase: Monitoring ReconcileFinalizer delete monitoring namespace")
+		logrus.Infof("[%s] Phase: Monitoring ReconcileFinalizer delete monitoring namespace", r.Config.GetProductName())
 		phase, err := resources.RemoveNamespace(ctx, inst, serverClient, r.Config.GetNamespace())
 		if err != nil || phase != v1alpha1.PhaseCompleted {
 			return phase, err
@@ -134,7 +134,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, inst *v1alpha1.Installation,
 	ns := r.Config.GetNamespace()
 
 	phase, err = r.ReconcileNamespace(ctx, ns, inst, serverClient)
-	logrus.Infof("Phase: %s ReconcileNamespace", phase)
+	logrus.Infof("[%s] Phase: %s ReconcileNamespace", r.Config.GetProductName(), phase)
 	if err != nil || phase != v1alpha1.PhaseCompleted {
 		return phase, err
 	}
@@ -144,34 +144,34 @@ func (r *Reconciler) Reconcile(ctx context.Context, inst *v1alpha1.Installation,
 		return v1alpha1.PhaseFailed, err
 	}
 
-	phase, err = r.ReconcileSubscription(ctx, namespace, marketplace.Target{Pkg: defaultSubscriptionName, Channel: marketplace.IntegreatlyChannel, Namespace: ns, ManifestPackage: manifestPackagae}, ns, serverClient)
-	logrus.Infof("Phase: %s ReconcileSubscription", phase)
+	phase, err = r.ReconcileSubscription(ctx, namespace, marketplace.Target{Pkg: defaultSubscriptionName, Channel: marketplace.IntegreatlyChannel, Namespace: ns, ManifestPackage: manifestPackagae}, ns, serverClient, string(r.Config.GetProductName()))
+	logrus.Infof("[%s] Phase: %s ReconcileSubscription", r.Config.GetProductName(), phase)
 	if err != nil || phase != v1alpha1.PhaseCompleted {
 		return phase, err
 	}
 
 	phase, err = r.reconcileComponents(ctx, serverClient)
-	logrus.Infof("Phase: %s reconcileComponents", phase)
+	logrus.Infof("[%s] Phase: %s reconcileComponents", r.Config.GetProductName(), phase)
 	if err != nil || phase != v1alpha1.PhaseCompleted {
 		return phase, err
 	}
 
 	phase, err = r.populateParams(ctx, serverClient)
-	logrus.Infof("Phase: %s populateParams", phase)
+	logrus.Infof("[%s] Phase: %s populateParams", r.Config.GetProductName(), phase)
 	if err != nil || phase != v1alpha1.PhaseCompleted {
 		logrus.Infof("Error: %s", err)
 		return phase, err
 	}
 
 	phase, err = r.reconcileTemplates(ctx, serverClient)
-	logrus.Infof("Phase: %s reconcileComponents", phase)
+	logrus.Infof("[%s] Phase: %s reconcileComponents",r.Config.GetProductName(), phase)
 	if err != nil || phase != v1alpha1.PhaseCompleted {
 		logrus.Infof("Error: %s", err)
 		return phase, err
 	}
 
 	phase, err = r.reconcileScrapeConfigs(ctx, serverClient)
-	logrus.Infof("Phase: %s reconcileScrapeConfigs", phase)
+	logrus.Infof("[%s] Phase: %s reconcileScrapeConfigs",r.Config.GetProductName(), phase)
 	if err != nil || phase != v1alpha1.PhaseCompleted {
 		logrus.Infof("Error: %s", err)
 		return phase, err
@@ -186,7 +186,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, inst *v1alpha1.Installation,
 		return v1alpha1.PhaseFailed, errors.Wrap(err, "could not update monitoring config")
 	}
 
-	logrus.Infof("%s installation is reconciled successfully", packageName)
+	logrus.Infof("[%s] installation is reconciled successfully", packageName)
 	return v1alpha1.PhaseCompleted, nil
 }
 
@@ -238,7 +238,7 @@ func (r *Reconciler) reconcileScrapeConfigs(ctx context.Context, serverClient pk
 		return v1alpha1.PhaseFailed, errors.Wrap(err, "error creating additional scrape config secret")
 	}
 
-	r.Logger.Info(fmt.Sprintf("operation result of creating additional scrape config secret was %v", or))
+	r.Logger.Info(fmt.Sprintf("[%s] operation result of creating additional scrape config secret was %v", r.Config.GetProductName(), or))
 
 	return v1alpha1.PhaseCompleted, nil
 }
@@ -251,13 +251,13 @@ func (r *Reconciler) reconcileTemplates(ctx context.Context, serverClient pkgcli
 		if err != nil {
 			return v1alpha1.PhaseFailed, errors.Wrap(err, fmt.Sprintf("failed to create/update monitoring template %s", template))
 		}
-		r.Logger.Infof("Reconciling the monitoring template %s was successful", template)
+		r.Logger.Infof("[%s] Reconciling the monitoring template %s was successful",r.Config.GetProductName(), template)
 	}
 	return v1alpha1.PhaseCompleted, nil
 }
 
 func (r *Reconciler) reconcileComponents(ctx context.Context, serverClient pkgclient.Client) (v1alpha1.StatusPhase, error) {
-	r.Logger.Info("Reconciling Monitoring Components")
+	r.Logger.Infof("[%s] Reconciling Monitoring Components", r.Config.GetProductName())
 	m := &monitoring_v1alpha1.ApplicationMonitoring{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      defaultMonitoringName,
@@ -281,7 +281,7 @@ func (r *Reconciler) reconcileComponents(ctx context.Context, serverClient pkgcl
 		return v1alpha1.PhaseFailed, errors.Wrap(err, "failed to create/update applicationmonitoring custom resource")
 	}
 
-	r.Logger.Infof("The operation result for monitoring %s was %s", m.Name, or)
+	r.Logger.Infof("[%s] The operation result for monitoring %s was %s", r.Config.GetProductName(), m.Name, or)
 	return v1alpha1.PhaseCompleted, nil
 }
 
